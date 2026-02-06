@@ -19,7 +19,7 @@ def create_spark_session():
 def extract_CSV(spark, clientes_path):
     print(f"Lendo arquivo de: {clientes_path}")
     
-    # 1. Leitura do CSV de Clientes
+    # 1. Leitura do arquivo CSV de Clientes
     df_clientes = spark.read.csv(
     clientes_path, 
     header=True, 
@@ -32,7 +32,7 @@ def extract_CSV(spark, clientes_path):
 def extract_TXT(spark, vendas_path):
     print(f"Lendo arquivos de: {vendas_path}")
 
-    # 1. Leitura do TXT de Vendas
+    # 1. Leitura do arquivo TXT de Vendas
     raw_vendas = spark.read.text(vendas_path)
     
     # 2. Leitura e se paração do arquivo vendas.txt interpretando corretamente os campos posicionais.
