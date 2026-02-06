@@ -1,20 +1,23 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, substring, sum, count, avg, round
 import os
-import shutil
 
 # ==============================================================================
-# PARAMETRIZACAO DE VARIAVEIS CRIACAO DE SESSAO SPARK
+# PARAMETRIZACAO DE VARIAVEIS E CRIACAO DE SESSAO SPARK
 # ==============================================================================
-# 1. Descobre o caminho da pasta onde este script (.py) está salvo
+
+# 1. DESCOBRE O CAMINHO DA PASTA ONDE ESTE SCRIPT (.PY) ESTÁ SALVO.
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-# 2. Monta os caminhos baseando-se na estrutura de pastas do projeto
-# Isso evita o uso de /home/berto/... ou do til (~)
+
+# 2. MONTA OS CAMINHOS BASEADO NA ESTRUTURA DE PASTAS DO PROJETO.
 PATH_CLIENTES = os.path.join(BASE_DIR, "data", "clientes.csv")
 PATH_VENDAS   = os.path.join(BASE_DIR, "data", "vendas.txt")
 PATH_OUTPUT   = os.path.join(BASE_DIR, "output")
+
+# 3. PARAMETRIZA O DELIMITADOR DO ARQUIVO (.CSV).
 DELIMITADOR_CSV = "," 
 
+# 4. CRIACAO DA SESSAO SPARK.
 def create_spark_session():
     return SparkSession.builder \
         .appName("Projeto_ETL_Spark") \
@@ -22,15 +25,16 @@ def create_spark_session():
         .getOrCreate()
 
 # ==============================================================================
-# LEITURA DOS ARQUIVOS DE CLIENTES E VENDAS
+# LEITURA DOS ARQUIVOS
 # ==============================================================================
 
-# 1. EXTRACAO DOS DADOS DO ARQUIVO CSV DE CLIENTES
+# 1. LEITURA DO ARQUIVO (.CSV) DE CLIENTE.
+
 def extract_CSV(spark, clientes_path):
     print(f"Lendo arquivo de: {clientes_path}")
     return spark.read.csv(clientes_path, header=True, inferSchema=True, sep=DELIMITADOR_CSV)
 
-# 2. ESTRACAO DOS DADOS DO ARQUIVO TXT DE VENDAS
+# 2. LEITURA POSICIONAL DO ARQUIVO (.TXT) DE VENDAS.
 def extract_TXT(spark, vendas_path):
     print(f"Lendo arquivos de: {vendas_path}")
     raw_vendas = spark.read.text(vendas_path)
@@ -43,48 +47,49 @@ def extract_TXT(spark, vendas_path):
     )
 
 # ==============================================================================
-# TRANSFORMACAO DOS DADOS DE CLIENTE E VENDAS
+# TRANSFORMACAO DOS DADOS
 # ==============================================================================
-def transform_data(df_clientes, df_vendas):
-    print(f"Realizando a transformação dos dados.")
-    df_joined = df_vendas.join(df_clientes, on="cliente_id", how="inner")
-    
-    # 1. RESUMO POR CLIENTE
-    resumo_clientes = df_joined.groupBy("cliente_id", "nome", "data_venda").agg(
+
+# 1. JOIN ENTRE AS BASES DE CLIENTE E VENDAS.
+def join_data(df_clientes, df_vendas):
+    print("Realizando Join de Clientes e Vendas...")
+    return df_vendas.join(df_clientes, on="cliente_id", how="inner")
+
+# 2. GERAÇÃO DO RESUMO DE CLIENTES.
+def get_resumo_clientes(df_joined):
+    print("Gerando resumo por cliente...")
+    return df_joined.groupBy("cliente_id", "nome", "data_venda").agg(
         round(sum("valor"), 2).alias("total_vendas"),
         count("venda_id").alias("quantidade_vendas"),
         round(avg("valor"), 2).alias("ticket_medio")
     )
-    
-    # 2. BALANCO POR PRODUTO
-    balanco_produtos = df_vendas.groupBy("produto_id", "data_venda").agg(
+
+# 3. GERAÇÃO DO BALANÇO DE PRODUTOS.
+def get_balanco_produtos(df_vendas):
+    print("Gerando balanço por produto...")
+    return df_vendas.groupBy("produto_id", "data_venda").agg(
         round(sum("valor"), 2).alias("total_vendas_produto"),
         count("venda_id").alias("quantidade_vendas_produto"),
         round(avg("valor"), 2).alias("ticket_medio_produto")
     )
-    
-    return resumo_clientes, balanco_produtos
 
 # ==============================================================================
-# CRIACAO DOS DIRETORIOS, PARTICOES E ARQUIVOS
+# CARREGAMENTO DOS DADOS
 # ==============================================================================
+
+# 1. CRIACAO DOS DIRETORIOS, PARTICOES E AQUIVOS.
 def load_data(df, path, prefixo_arquivo, partition_col="data_venda"):
     try:
-        # 1. Salva usando repartition(1) para garantir um único arquivo por pasta de partição
         df.repartition(1).write.mode("overwrite") \
             .option("header", "true") \
             .partitionBy(partition_col) \
             .csv(path)
         
-        # 2. Percorre as pastas para renomear os arquivos e limpar metadados
         for root, dirs, files in os.walk(path):
             for file in files:
-                # Se for o arquivo de dados gerado pelo Spark
                 if file.endswith(".csv") and file.startswith("part-"):
-                    # Captura o valor da data da pasta atual (ex: data_venda=20230401)
                     pasta_data = os.path.basename(root)
                     valor_data = pasta_data.split("=")[-1]
-                    
                     novo_nome = f"{prefixo_arquivo}_{valor_data}.csv"
                     os.rename(os.path.join(root, file), os.path.join(root, novo_nome))
       
@@ -95,24 +100,24 @@ def load_data(df, path, prefixo_arquivo, partition_col="data_venda"):
 # ==============================================================================
 # EXECUCAO PRINCIPAL
 # ==============================================================================
+
 def main():
     spark = create_spark_session()
     spark.sparkContext.setLogLevel("ERROR")
     
     try:
-        # ETL - Extração e Transformação
+        # 1. EXTRACAO DOS DADOS.
         df_cli = extract_CSV(spark, PATH_CLIENTES)
         df_ven = extract_TXT(spark, PATH_VENDAS)
-        resumo_cli, balanco_prod = transform_data(df_cli, df_ven)
         
-        # Load - Salvando com nomes específicos
-        load_data(resumo_cli, 
-                  os.path.join(PATH_OUTPUT, "resumo_clientes"), 
-                  prefixo_arquivo="clientes")
+        # 2. TRANSFORMACAO DOS DADOS.
+        df_unificado = join_data(df_cli, df_ven)
+        resumo_cli   = get_resumo_clientes(df_unificado)
+        balanco_prod = get_balanco_produtos(df_ven)
         
-        load_data(balanco_prod, 
-                  os.path.join(PATH_OUTPUT, "balanco_produtos"), 
-                  prefixo_arquivo="vendas")
+        # 3. CARGA DOS DADOS.
+        load_data(resumo_cli, os.path.join(PATH_OUTPUT, "resumo_clientes"), prefixo_arquivo="clientes")
+        load_data(balanco_prod, os.path.join(PATH_OUTPUT, "balanco_produtos"), prefixo_arquivo="vendas")
         
         print("\n--- Processamento Finalizado com Sucesso ---")
         resumo_cli.show()
