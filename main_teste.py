@@ -29,7 +29,6 @@ def create_spark_session():
 # ==============================================================================
 
 # 1. LEITURA DO ARQUIVO (.CSV) DE CLIENTE.
-
 def extract_CSV(spark, clientes_path):
     print(f"Lendo arquivo de: {clientes_path}")
     return spark.read.csv(clientes_path, header=True, inferSchema=True, sep=DELIMITADOR_CSV)
@@ -77,7 +76,7 @@ def get_balanco_produtos(df_vendas):
 # CARREGAMENTO DOS DADOS
 # ==============================================================================
 
-# 1. CRIACAO DOS DIRETORIOS, PARTICOES E AQUIVOS.
+# 1. CRIACAO DOS DIRETORIOS, PARTICOES E ARQUIVOS.
 def load_data(df, path, prefixo_arquivo, partition_col="data_venda"):
     try:
         df.repartition(1).write.mode("overwrite") \
