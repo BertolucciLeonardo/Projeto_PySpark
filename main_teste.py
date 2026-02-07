@@ -1,6 +1,7 @@
 from pyspark.sql import SparkSession
 from pyspark.sql.functions import col, substring, sum, count, avg, round
 import os
+import shutil
 
 # ==============================================================================
 # PARAMETRIZACAO DE VARIAVEIS E CRIACAO DE SESSAO SPARK
@@ -10,9 +11,10 @@ import os
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
 # 2. MONTA OS CAMINHOS BASEADO NA ESTRUTURA DE PASTAS DO PROJETO.
-PATH_CLIENTES = os.path.join(BASE_DIR, "data", "clientes.csv")
-PATH_VENDAS   = os.path.join(BASE_DIR, "data", "vendas.txt")
+PATH_CLIENTES = os.path.join(BASE_DIR, "data", "clientes_*.csv")
+PATH_VENDAS   = os.path.join(BASE_DIR, "data", "vendas_*.txt")
 PATH_OUTPUT   = os.path.join(BASE_DIR, "output")
+PASTA_PROCESSADOS = os.path.join(BASE_DIR, "processados")
 
 # 3. PARAMETRIZA O DELIMITADOR DO ARQUIVO (.CSV).
 DELIMITADOR_CSV = "," 
@@ -115,12 +117,20 @@ def main():
         balanco_prod = get_balanco_produtos(df_ven)
         
         # 3. CARGA DOS DADOS.
-        load_data(resumo_cli, os.path.join(PATH_OUTPUT, "resumo_clientes"), prefixo_arquivo="clientes")
-        load_data(balanco_prod, os.path.join(PATH_OUTPUT, "balanco_produtos"), prefixo_arquivo="vendas")
+        load_data(resumo_cli, os.path.join(PATH_OUTPUT, "resumo_clientes"), prefixo_arquivo="resumo_clientes")
+        load_data(balanco_prod, os.path.join(PATH_OUTPUT, "balanco_produtos"), prefixo_arquivo="balanco_produtos")
         
+        # 4. MOVER OS ARQUIVOS PARA PASTA DE PROCESSADOS.
+        if not os.path.exists(PASTA_PROCESSADOS):
+            os.makedirs(PASTA_PROCESSADOS)
+            
+        for f in os.listdir(os.path.join(BASE_DIR, "data")):
+            if (f.startswith("clientes_") and f.endswith(".csv")) or (f.startswith("vendas_") and f.endswith(".txt")):
+                shutil.move(os.path.join(BASE_DIR, "data", f), os.path.join(PASTA_PROCESSADOS, f))
+                print(f"Arquivo {f} movido para a pasta de processados.")
+
         print("\n--- Processamento Finalizado com Sucesso ---")
-        resumo_cli.show()
-        balanco_prod.show()
+        
     except Exception as e:
         print(f"Erro no pipeline: {e}")
     finally:
