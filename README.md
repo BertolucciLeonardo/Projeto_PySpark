@@ -1,4 +1,4 @@
-# Projeto ETL PySpark: Consolidação de Vendas e Clientes
+# Projeto PySpark: Consolidação de Vendas e Clientes
 Este projeto consiste em desenvolver um pipeline de ETL em PySpark para integrar dados de clientes (CSV) e vendas (TXT Posicional), gerando relatórios de performance e financeiros.
 
 ## Cenário e Objetivo
