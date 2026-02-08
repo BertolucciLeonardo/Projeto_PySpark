@@ -11,7 +11,9 @@ amostra_para_teste/
 processados/
 spark-warehouse/
 metastore_db/
+__pycache__/
 derby.log
+main.cpython-312.pyc
 
 # Ficheiros de versão/sistema do Spark
 =3.5.0
