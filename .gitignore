@@ -1,0 +1,17 @@
+# Ambientes Virtuais
+venv/
+.env
+
+# Configurações do VS Code
+.vscode/
+
+# Pastas de saída e temporários do Spark
+output/
+amostra_para_teste/
+processados/
+spark-warehouse/
+metastore_db/
+derby.log
+
+# Ficheiros de versão/sistema do Spark
+=3.5.0

@@ -1,0 +1,5 @@
+cliente_id,nome,total_vendas,quantidade_vendas,ticket_medio
+3,Carlos Andrade,505.0,5,101.0
+1,Joao Silva,870.0,6,145.0
+2,Maria Souza,1100.0,5,220.0
+4,Ana Costa,670.0,4,167.5

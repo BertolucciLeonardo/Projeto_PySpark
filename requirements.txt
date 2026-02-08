@@ -1,0 +1,2 @@
+# Principal biblioteca usada no pipeline ETL
+pyspark>=3.0.0
