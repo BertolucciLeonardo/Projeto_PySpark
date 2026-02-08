@@ -1,2 +1,0 @@
-Requirement already satisfied: pyspark in ./venv/lib/python3.12/site-packages (4.1.1)
-Requirement already satisfied: py4j<0.10.9.10,>=0.10.9.7 in ./venv/lib/python3.12/site-packages (from pyspark) (0.10.9.9)
